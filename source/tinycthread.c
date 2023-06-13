@@ -23,6 +23,8 @@ freely, subject to the following restrictions:
 */
 
 #include "tinycthread.h"
+
+#ifndef _TTHREAD_CTHREADS_
 #include <stdlib.h>
 
 /* Platform specific includes */
@@ -480,8 +482,14 @@ struct TinyCThreadTSSData {
 
 static tss_dtor_t _tinycthread_tss_dtors[1088] = { NULL, };
 
-static _Thread_local struct TinyCThreadTSSData* _tinycthread_tss_head = NULL;
-static _Thread_local struct TinyCThreadTSSData* _tinycthread_tss_tail = NULL;
+#ifdef _MSC_VER
+#   define _TTHREAD_LOCAL_   _declspec(thread)
+#else
+#   define _TTHREAD_LOCAL_   _Thread_local
+#endif
+
+static _TTHREAD_LOCAL_ struct TinyCThreadTSSData* _tinycthread_tss_head = NULL;
+static _TTHREAD_LOCAL_ struct TinyCThreadTSSData* _tinycthread_tss_tail = NULL;
 
 static void _tinycthread_tss_cleanup (void);
 
@@ -928,4 +936,5 @@ void call_once(once_flag *flag, void (*func)(void))
 
 #ifdef __cplusplus
 }
+#endif
 #endif

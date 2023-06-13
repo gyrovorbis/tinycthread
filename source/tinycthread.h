@@ -52,15 +52,26 @@ extern "C" {
 * tinycthread.h.
 */
 
+#ifdef _WIN32
+#   define NOGDI
+# elif !defined(__USE_UNIX98)
+#   define __USE_UNIX98
+#endif
+
 /* Which platform are we on? */
 #if !defined(_TTHREAD_PLATFORM_DEFINED_)
   #if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
     #define _TTHREAD_WIN32_
+  #elif defined( __DREAMCAST__)
+    #define _TTHREAD_CTHREADS_
+    #include <threads.h>
   #else
     #define _TTHREAD_POSIX_
   #endif
   #define _TTHREAD_PLATFORM_DEFINED_
 #endif
+
+#ifndef _TTHREAD_CTHREADS_
 
 /* Activate some POSIX functionality (e.g. clock_gettime and recursive mutexes) */
 #if defined(_TTHREAD_POSIX_)
@@ -84,6 +95,7 @@ extern "C" {
 
 /* Platform specific includes */
 #if defined(_TTHREAD_POSIX_)
+  #include <sys/types.h>
   #include <pthread.h>
 #elif defined(_TTHREAD_WIN32_)
   #ifndef WIN32_LEAN_AND_MEAN
@@ -472,8 +484,10 @@ int tss_set(tss_t key, void *val);
   #define call_once(flag,func) pthread_once(flag,func)
 #endif
 
+#endif
+
 #ifdef __cplusplus
-}
+  }
 #endif
 
 #endif /* _TINYTHREAD_H_ */

@@ -1,25 +1,33 @@
-cmake_minimum_required(VERSION 2.8.4)
-project(TinyCThread)
+cmake_minimum_required(VERSION 3.10)
+project(TinyCThread
+        VERSION 1.0.0
+        DESCRIPTION "Fixed Copy of TinyCThread"
+        LANGUAGES C)
 enable_testing()
 
-find_package(Threads REQUIRED)
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
-add_library(tinycthread STATIC source/tinycthread.c)
+add_library(tinycthread STATIC source/tinycthread.c source/tinycthread.h)
+if(NOT DEFINED PLATFORM_DREAMCAST)
+find_package(Threads REQUIRED)
 target_link_libraries(tinycthread ${CMAKE_THREAD_LIBS_INIT})
+endif()
 set_property(TARGET tinycthread APPEND PROPERTY INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/source")
 set_property(TARGET tinycthread APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/source")
 set_property(TARGET tinycthread PROPERTY POSITION_INDEPENDENT_CODE True)
 
-option(TINYCTHREAD_DISABLE_TESTS "Disable TinyCThread unit tests")
+option(TINYCTHREAD_ENABLE_TESTS "Enable TinyCThread unit tests" OFF)
 option(TINYCTHREAD_INSTALL "Install a static library for TinyCThread")
 
-if(NOT TINYCTHREAD_DISABLE_TESTS)
+if(TINYCTHREAD_ENABLE_TESTS)
   add_executable(test-tinycthread "${CMAKE_CURRENT_SOURCE_DIR}/test/test.c")
   target_link_libraries(test-tinycthread tinycthread)
 
   add_test(NAME tinycthread
     COMMAND $<TARGET_FILE:test-tinycthread>)
-endif(NOT TINYCTHREAD_DISABLE_TESTS)
+endif(TINYCTHREAD_ENABLE_TESTS)
 
 if(TINYCTHREAD_INSTALL)
   if(CMAKE_INSTALL_LIBDIR)
