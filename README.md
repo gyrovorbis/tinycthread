@@ -6,6 +6,7 @@ libGimbal fork of TinyCThreads. Changelist:
 - Fixes for building with MSVC
 - Sega Dreamcast support
 - Sony Playstation Vita support
+- Merged a few PRs for enhancements and improved standards conformity
 
 TinyCThread v1.2
 ================
