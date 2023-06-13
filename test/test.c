@@ -20,6 +20,8 @@ freely, subject to the following restrictions:
 
     3. This notice may not be removed or altered from any source
     distribution.
+
+SPDX-License-Identifier: Zlib
 */
 
 #include <stdio.h>
@@ -129,8 +131,10 @@ static int thread_lock(void * aArg)
 
   for (i = 0; i < TEST_THREAD_LOCK_ITERATIONS_PER_THREAD; ++ i)
   {
+    int ret;
     mtx_lock(&gMutex);
-    assert(mtx_trylock(&gMutex) == thrd_busy);
+    ret = mtx_trylock(&gMutex);
+    assert(ret == thrd_busy);
     ++ gCount;
     mtx_unlock(&gMutex);
   }
@@ -140,8 +144,11 @@ static int thread_lock(void * aArg)
   mtx_lock(&gMutex);
   for (i = 0; i < TEST_THREAD_LOCK_ITERATIONS_PER_THREAD; ++ i)
   {
-    assert (mtx_trylock(&try_mutex) == thrd_success);
-    assert (mtx_trylock(&try_mutex) == thrd_busy);
+    int ret;
+    ret = mtx_trylock(&try_mutex);
+    assert (ret == thrd_success);
+    ret = mtx_trylock(&try_mutex);
+    assert (ret == thrd_busy);
     ++ gCount;
     mtx_unlock(&try_mutex);
   }
@@ -180,11 +187,13 @@ struct TestMutexData {
 
 static int test_mutex_recursive_cb(void* data)
 {
+  int ret;
   const int iterations = 10000;
   int i;
   struct TestMutexData* mutex_data = (struct TestMutexData*) data;
 
-  assert (mtx_lock (&(mutex_data->mtx)) == thrd_success);
+  ret = mtx_lock (&(mutex_data->mtx));
+  assert (ret == thrd_success);
 
   for ( i = 0 ; i < iterations ; i++ )
   {
@@ -302,6 +311,7 @@ static int test_mutex_timed_thread_func(void* arg)
 
 static void test_mutex_timed(void)
 {
+  int ret;
   struct TestMutexTimedData data;
   thrd_t thread;
   struct timespec interval = { 0, };
@@ -325,7 +335,8 @@ static void test_mutex_timed(void)
   thrd_create(&thread, test_mutex_timed_thread_func, &data);
 
   timespec_get(&start, TIME_UTC);
-  assert (thrd_sleep(&interval, &interval) == 0);
+  ret = thrd_sleep(&interval, &interval);
+  assert (ret == 0);
   timespec_get(&end, TIME_UTC);
   mtx_unlock(&(data.mutex));
 
@@ -341,10 +352,12 @@ static int test_thrd_exit_func(void* arg)
 
 static void test_thrd_exit(void)
 {
+  int ret;
   thrd_t thread;
   int res;
   thrd_create(&thread, test_thrd_exit_func, NULL);
-  assert(thrd_join(thread, &res));
+  ret = thrd_join(thread, &res);
+  assert(ret == thrd_success);
   assert(res == 2);
 }
 
