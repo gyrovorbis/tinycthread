@@ -20,6 +20,8 @@ freely, subject to the following restrictions:
 
     3. This notice may not be removed or altered from any source
     distribution.
+
+SPDX-License-Identifier: Zlib
 */
 
 #include "tinycthread.h"
@@ -749,7 +751,8 @@ int thrd_sleep(const struct timespec *duration, struct timespec *remaining)
 void thrd_yield(void)
 {
 #if defined(_TTHREAD_WIN32_)
-  Sleep(0);
+  /* we are not interesting in a result of this function, calm it down. */
+  (void) SwitchToThread();
 #else
   sched_yield();
 #endif

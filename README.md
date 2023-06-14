@@ -1,3 +1,13 @@
+libGimbal fork of TinyCThreads. Changelist:
+- Tiny change to add header file to CMakeLists project
+- Don't build tests by default
+- Gracefully allow using builtin C11 threads when provided
+- Extra #ifdef checks for using Win threads properly
+- Fixes for building with MSVC
+- Sega Dreamcast support
+- Sony Playstation Vita support
+- Merged a few PRs for enhancements and improved standards conformity
+
 TinyCThread v1.2
 ================
 
