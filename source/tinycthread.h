@@ -64,7 +64,7 @@ extern "C" {
 #if !defined(_TTHREAD_PLATFORM_DEFINED_)
   #if defined(_WIN32) || defined(__WIN32__) || defined(__WINDOWS__)
     #define _TTHREAD_WIN32_
-  #elif defined(__DREAMCAST__) || defined(__GAMECUBE__)
+  #elif defined(__DREAMCAST__) || defined(__GAMECUBE__) || defined(TINYCTHREAD_FORCE_C11)
     #define _TTHREAD_CTHREADS_
     #include <threads.h>
   #else

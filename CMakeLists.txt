@@ -23,6 +23,11 @@ set_property(TARGET tinycthread PROPERTY POSITION_INDEPENDENT_CODE True)
 
 option(TINYCTHREAD_ENABLE_TESTS "Enable TinyCThread unit tests" OFF)
 option(TINYCTHREAD_INSTALL "Install a static library for TinyCThread")
+option(TINYCTHREAD_USE_C11_THREADS "Force use of C11 <threads.h> backend" OFF)
+
+target_compile_definitions(tinycthread
+    PRIVATE $<$<BOOL:${TINYCTHREAD_USE_C11_THREADS}>:TINYCTHREAD_FORCE_C11>
+)
 
 if(TINYCTHREAD_ENABLE_TESTS)
   add_executable(test-tinycthread "${CMAKE_CURRENT_SOURCE_DIR}/test/test.c")
