@@ -94,6 +94,7 @@ extern "C" {
 
 /* Generic includes */
 #include <time.h>
+#include <stdlib.h>
 
 /* Platform specific includes */
 #if defined(_TTHREAD_POSIX_)
@@ -482,7 +483,7 @@ int tss_set(tss_t key, void *val);
     CRITICAL_SECTION lock;
   } once_flag;
   #define ONCE_FLAG_INIT {0,}
-#else
+#elif !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
   #define once_flag pthread_once_t
   #define ONCE_FLAG_INIT PTHREAD_ONCE_INIT
 #endif
@@ -494,7 +495,7 @@ int tss_set(tss_t key, void *val);
  */
 #if defined(_TTHREAD_WIN32_)
   void call_once(once_flag *flag, void (*func)(void));
-#else
+#elif !(defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
   #define call_once(flag,func) pthread_once(flag,func)
 #endif
 
