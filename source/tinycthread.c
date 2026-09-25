@@ -24,9 +24,366 @@ freely, subject to the following restrictions:
 SPDX-License-Identifier: Zlib
 */
 
+#if defined(TINYCTHREAD_ENABLE_THREADS) && !TINYCTHREAD_ENABLE_THREADS && \
+    (defined(__unix__) || defined(__APPLE__)) && !defined(_WIN32)
+  #if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 199309L
+    #undef _POSIX_C_SOURCE
+    #define _POSIX_C_SOURCE 199309L
+  #endif
+#endif
+
 #include "tinycthread.h"
 
-#ifndef _TTHREAD_CTHREADS_
+#if defined(TINYCTHREAD_ENABLE_THREADS) && !TINYCTHREAD_ENABLE_THREADS
+
+#include <setjmp.h>
+#include <stdlib.h>
+#include <time.h>
+#if defined(__unix__) || defined(__APPLE__)
+  #include <errno.h>
+#elif defined(_WIN32)
+  #include <limits.h>
+  #include <sys/timeb.h>
+  #define WIN32_LEAN_AND_MEAN
+  #include <windows.h>
+#endif
+
+typedef struct _tthread_exit_context {
+  jmp_buf mJump;
+  volatile int *mResult;
+  struct _tthread_exit_context *mPrevious;
+} _tthread_exit_context;
+
+static _tthread_exit_context *_tthread_exit_current;
+
+typedef struct {
+  int mActive;
+  void *mValue;
+  tss_dtor_t mDestructor;
+} _tss_entry;
+
+static _tss_entry *_tss_entries;
+static size_t _tss_entry_count;
+static size_t _tss_entry_capacity;
+
+#if defined(_TTHREAD_EMULATE_TIMESPEC_GET_)
+int _tthread_timespec_get(struct timespec *ts, int base)
+{
+  struct _timeb tb;
+
+  if (base != TIME_UTC || _ftime_s(&tb) != 0)
+  {
+    return 0;
+  }
+  ts->tv_sec = (time_t)tb.time;
+  ts->tv_nsec = 1000000L * (long)tb.millitm;
+  return base;
+}
+#endif
+
+int thrd_create(thrd_t *thr, thrd_start_t func, void *arg)
+{
+  _tthread_exit_context context;
+  volatile int exit_result = 0;
+
+  if (thr == NULL || func == NULL)
+  {
+    return thrd_error;
+  }
+
+  context.mResult = &exit_result;
+  context.mPrevious = _tthread_exit_current;
+  _tthread_exit_current = &context;
+
+  if (setjmp(context.mJump) == 0)
+  {
+    thr->result = func(arg);
+  }
+  else
+  {
+    thr->result = exit_result;
+  }
+
+  _tthread_exit_current = context.mPrevious;
+  thr->valid = 1;
+  return thrd_success;
+}
+
+thrd_t thrd_current(void)
+{
+  thrd_t thr;
+  thr.result = 0;
+  thr.valid = 1;
+  return thr;
+}
+
+int thrd_detach(thrd_t thr)
+{
+  return thr.valid ? thrd_success : thrd_error;
+}
+
+int thrd_equal(thrd_t thr0, thrd_t thr1)
+{
+  (void)thr0;
+  (void)thr1;
+  return 1;
+}
+
+int thrd_join(thrd_t thr, int *res)
+{
+  if (!thr.valid)
+  {
+    return thrd_error;
+  }
+  if (res != NULL)
+  {
+    *res = thr.result;
+  }
+  return thrd_success;
+}
+
+void thrd_exit(int res)
+{
+  if (_tthread_exit_current != NULL)
+  {
+    *_tthread_exit_current->mResult = res;
+    longjmp(_tthread_exit_current->mJump, 1);
+  }
+  exit(res);
+}
+
+int thrd_sleep(const struct timespec *duration, struct timespec *remaining)
+{
+  if (duration == NULL || duration->tv_sec < 0 ||
+      duration->tv_nsec < 0 || duration->tv_nsec >= 1000000000L)
+  {
+    return -2;
+  }
+
+#if defined(__unix__) || defined(__APPLE__)
+  if (nanosleep(duration, remaining) != 0)
+  {
+    return errno == EINTR ? -1 : -2;
+  }
+#elif defined(_WIN32)
+  if ((unsigned long long)duration->tv_sec > (ULLONG_MAX - 1000ULL) / 1000ULL)
+  {
+    return -2;
+  }
+  unsigned long long milliseconds =
+    (unsigned long long)duration->tv_sec * 1000 +
+    ((unsigned long long)duration->tv_nsec + 999999) / 1000000;
+  while (milliseconds != 0)
+  {
+    DWORD interval = milliseconds >= 0xfffffffeULL ?
+      0xfffffffeUL : (DWORD)milliseconds;
+    Sleep(interval);
+    milliseconds -= interval;
+  }
+#else
+  return -2;
+#endif
+
+  if (remaining != NULL)
+  {
+    remaining->tv_sec = 0;
+    remaining->tv_nsec = 0;
+  }
+  return 0;
+}
+
+int mtx_init(mtx_t *mtx, int type)
+{
+  (void)type;
+  *mtx = 0;
+  return thrd_success;
+}
+
+void mtx_destroy(mtx_t *mtx)
+{
+  (void)mtx;
+}
+
+int mtx_lock(mtx_t *mtx)
+{
+  (void)mtx;
+  return thrd_success;
+}
+
+int mtx_timedlock(mtx_t *mtx, const struct timespec *ts)
+{
+  (void)mtx;
+  (void)ts;
+  return thrd_success;
+}
+
+int mtx_trylock(mtx_t *mtx)
+{
+  (void)mtx;
+  return thrd_success;
+}
+
+int mtx_unlock(mtx_t *mtx)
+{
+  (void)mtx;
+  return thrd_success;
+}
+
+int cnd_init(cnd_t *cond)
+{
+  *cond = 0;
+  return thrd_success;
+}
+
+void cnd_destroy(cnd_t *cond)
+{
+  (void)cond;
+}
+
+int cnd_signal(cnd_t *cond)
+{
+  (void)cond;
+  return thrd_success;
+}
+
+int cnd_broadcast(cnd_t *cond)
+{
+  (void)cond;
+  return thrd_success;
+}
+
+int cnd_wait(cnd_t *cond, mtx_t *mtx)
+{
+  (void)cond;
+  (void)mtx;
+  return thrd_error;
+}
+
+int cnd_timedwait(cnd_t *cond, mtx_t *mtx, const struct timespec *ts)
+{
+#if defined(__unix__) || defined(__APPLE__) || defined(_WIN32)
+  struct timespec now;
+  struct timespec duration;
+
+  (void)cond;
+  (void)mtx;
+  if (ts == NULL || ts->tv_sec < 0 ||
+      ts->tv_nsec < 0 || ts->tv_nsec >= 1000000000L)
+  {
+    return thrd_error;
+  }
+
+  for (;;)
+  {
+    if (timespec_get(&now, TIME_UTC) != TIME_UTC)
+    {
+      return thrd_error;
+    }
+    if (now.tv_sec > ts->tv_sec ||
+        (now.tv_sec == ts->tv_sec && now.tv_nsec >= ts->tv_nsec))
+    {
+      return thrd_timedout;
+    }
+
+    duration.tv_sec = ts->tv_sec - now.tv_sec;
+    duration.tv_nsec = ts->tv_nsec - now.tv_nsec;
+    if (duration.tv_nsec < 0)
+    {
+      --duration.tv_sec;
+      duration.tv_nsec += 1000000000L;
+    }
+    if (thrd_sleep(&duration, NULL) == -2)
+    {
+      return thrd_error;
+    }
+  }
+#else
+  (void)cond;
+  (void)mtx;
+  (void)ts;
+  return thrd_error;
+#endif
+}
+
+void call_once(once_flag *flag, void (*func)(void))
+{
+  if (!*flag)
+  {
+    func();
+    *flag = 1;
+  }
+}
+
+int tss_create(tss_t *key, tss_dtor_t dtor)
+{
+  size_t i;
+  _tss_entry *entries;
+
+  for (i = 0; i < _tss_entry_count; ++i)
+  {
+    if (!_tss_entries[i].mActive)
+    {
+      _tss_entries[i].mActive = 1;
+      _tss_entries[i].mValue = NULL;
+      _tss_entries[i].mDestructor = dtor;
+      *key = (tss_t)i;
+      return thrd_success;
+    }
+  }
+
+  if (_tss_entry_count == _tss_entry_capacity)
+  {
+    size_t capacity = _tss_entry_capacity ? _tss_entry_capacity * 2 : 8;
+    entries = (_tss_entry *)realloc(_tss_entries, capacity * sizeof(*entries));
+    if (entries == NULL)
+    {
+      return thrd_error;
+    }
+    _tss_entries = entries;
+    _tss_entry_capacity = capacity;
+  }
+
+  i = _tss_entry_count++;
+  _tss_entries[i].mActive = 1;
+  _tss_entries[i].mValue = NULL;
+  _tss_entries[i].mDestructor = dtor;
+  *key = (tss_t)i;
+  return thrd_success;
+}
+
+void tss_delete(tss_t key)
+{
+  if (key >= 0 && (size_t)key < _tss_entry_count && _tss_entries[key].mActive)
+  {
+    _tss_entries[key].mActive = 0;
+    _tss_entries[key].mValue = NULL;
+    _tss_entries[key].mDestructor = NULL;
+  }
+}
+
+void *tss_get(tss_t key)
+{
+  if (key < 0 || (size_t)key >= _tss_entry_count || !_tss_entries[key].mActive)
+  {
+    return NULL;
+  }
+  return _tss_entries[key].mValue;
+}
+
+int tss_set(tss_t key, void *val)
+{
+  if (key < 0 || (size_t)key >= _tss_entry_count || !_tss_entries[key].mActive)
+  {
+    return thrd_error;
+  }
+  _tss_entries[key].mValue = val;
+  return thrd_success;
+}
+
+#else
+
+#if (!defined(TINYCTHREAD_ENABLE_THREADS) || TINYCTHREAD_ENABLE_THREADS) && \
+    !defined(_TTHREAD_CTHREADS_)
 #include <stdlib.h>
 
 /* Platform specific includes */
@@ -941,3 +1298,5 @@ void call_once(once_flag *flag, void (*func)(void))
 }
 #endif
 #endif
+
+#endif /* TINYCTHREAD_ENABLE_THREADS */
