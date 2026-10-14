@@ -264,7 +264,6 @@ int _tthread_timespec_get(struct timespec *ts, int base);
 #endif
 
 #define thread_local _Thread_local
-#define TTHREAD_THREAD_LOCAL thread_local
 
 /* Macros */
 #if defined(_TTHREAD_WIN32_)
@@ -587,6 +586,8 @@ int tss_set(tss_t key, void *val);
 #endif
 
 #endif
+
+#define TTHREAD_THREAD_LOCAL thread_local
 
 #endif /* TINYCTHREAD_ENABLE_THREADS */
 
